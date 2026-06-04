@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPCD.Kepler // SYSTEM OS</title>
+    <style>
+      :root {
+        /* Cyberpunk Neon Purple Palette */
+        --bg:           #09010f; 
+        --bg-row:       rgba(217, 0, 255, 0.04);
+        --neon:         #d900ff;
+        --neon-dim:     #9d00ff;
+        --neon-faint:   rgba(217, 0, 255, 0.14);
+        --neon-border:  rgba(217, 0, 255, 0.25);
+        --neon-hover:   rgba(217, 0, 255, 0.35);
+        --text:         #faebff;
+        --muted:        #9c67b5;
+        --mid:          #683182;
+        --mono:         'Consolas', 'Courier New', 'Terminal', monospace;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      [hidden] { display: none !important; }
+
+      html { background: var(--bg); height: 100dvh; }
+
+      body {
+        font-family: var(--mono);
+        background: var(--bg);
+        color: var(--text);
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── scanlines ── */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 200;
+        background: repeating-linear-gradient(
+          180deg,
+          transparent 0px,
+          transparent 2px,
+          rgba(0, 0, 0, 0.15) 2px,
+          rgba(0, 0, 0, 0.15) 4px
+        );
+      }
+
+      /* ── matrix rain canvas ── */
+      #matrix {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        opacity: 0.15;
+        pointer-events: none;
+        will-change: transform;
+      }
+
+      /* ── all content above canvas ── */
+      .shell {
+        position: relative;
+        z-index: 10;
+        width: min(680px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: clamp(16px, 4vh, 52px) 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      /* ── page load animations ── */
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── header ── */
+      .header {
+        margin-bottom: clamp(10px, 3vh, 46px);
+        animation: fade-up 0.7s cubic-bezier(.2,.8,.3,1) both;
+        flex-shrink: 0;
+      }
+
+      .site-title {
+        font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 0.9;
+        color: var(--text);
+        text-transform: uppercase;
+        text-shadow: 0 0 10px rgba(217, 0, 255, 0.4);
+      }
+
+      .site-title em {
+        font-style: normal;
+        color: var(--neon);
+      }
+
+      .title-btn {
+        background: none;
+        border: none;
+        padding: 0 4px;
+        margin: 0 -4px;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease, text-shadow 0.15s ease;
+      }
+
+      .title-btn:hover {
+        color: var(--neon);
+        text-shadow: 0 0 15px var(--neon);
+      }
+
+      .title-btn:hover em {
+        color: var(--text);
+      }
+
+      .site-sub {
+        margin-top: clamp(8px, 1.5vh, 16px);
+        font-size: 0.85rem;
+        color: var(--neon-dim);
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      /* ── notice ── */
+      .notice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: clamp(8px, 2vh, 30px);
+        padding: 12px 16px;
+        border-left: 2px solid var(--neon);
+        background: var(--neon-faint);
+        flex-shrink: 0;
+        animation: fade-up 0.6s 0.1s cubic-bezier(.2,.8,.3,1) both;
+      }
+
+      .notice-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--neon);
+        flex-shrink: 0;
+        box-shadow: 0 0 12px var(--neon);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .notice-text {
+        font-size: 0.85rem;
+        color: var(--neon);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .notice-text span {
+        color: var(--text);
+        opacity: 0.7;
+        margin-left: 8px;
+      }
+
+      /* ── divider ── */
+      .divider {
+        height: 1px;
+        background: var(--neon-border);
+        margin-bottom: 0;
+      }
+
+      /* ── service list ── */
+      #mainView {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .service-list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .service-row {
+        display: grid;
+        grid-template-columns: 35px 1fr auto;
+        align-items: center;
+        gap: 20px;
+        padding: clamp(12px, 2vh, 22px) 0;
+        flex: 1;
+        border-bottom: 1px dashed var(--neon-border);
+        text-decoration: none;
+        color: var(--text);
+        position: relative;
+        transition: background 0.18s ease, padding-left 0.2s ease;
+        animation: fade-up 0.6s cubic-bezier(.2,.8,.3,1) both;
+      }
+
+      .service-row::before {
+        content: '>';
+        position: absolute;
+        left: -16px;
+        color: var(--neon);
+        opacity: 0;
+        font-weight: bold;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        transform: translateX(-10px);
+      }
+
+      .service-row:hover::before {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .service-row:hover {
+        background: var(--bg-row);
+        padding-left: 10px;
+      }
+
+      .service-row:nth-child(1) { animation-delay: 0.18s; }
+      .service-row:nth-child(2) { animation-delay: 0.26s; }
+
+      .row-index {
+        font-size: 14px;
+        color: var(--mid);
+        letter-spacing: 0.1em;
+      }
+
+      .row-body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .row-name {
+        font-size: 1.15rem;
+        font-weight: bold;
+        color: var(--text);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        transition: color 0.18s ease, text-shadow 0.18s ease;
+      }
+
+      .service-row:hover .row-name {
+        color: var(--neon);
+        text-shadow: 0 0 8px rgba(217, 0, 255, 0.5);
+      }
+
+      .row-specs {
+        font-size: 0.75rem;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+      }
+
+      .row-enter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: var(--neon-dim);
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        transition: color 0.18s ease, gap 0.18s ease;
+      }
+
+      .service-row:hover .row-enter {
+        color: var(--neon);
+        gap: 14px;
+      }
+
+      /* ── footer ── */
+      .footer {
+        margin-top: clamp(8px, 2vh, 36px);
+        padding-top: 16px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        animation: fade-up 0.6s 0.62s cubic-bezier(.2,.8,.3,1) both;
+      }
+
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .footer-link {
+        font-family: inherit;
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 6px 14px;
+        border: 1px solid var(--neon-border);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        background: rgba(0,0,0,0.4);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .footer-link:hover {
+        color: var(--bg);
+        background: var(--neon);
+        box-shadow: 0 0 10px var(--neon);
+      }
+
+      .footer-stamp {
+        font-size: 0.75rem;
+        color: var(--mid);
+        letter-spacing: 0.1em;
+      }
+    </style>
+</head>
+<body>
+    <canvas id="matrix" aria-hidden="true"></canvas>
+
+    <div class="shell">
+      <header class="header">
+        <h1 class="site-title"><button id="titleBtn" class="title-btn">MPCD<em>.</em>KEPLER</button></h1>
+        <p class="site-sub">System Operations // Terminal</p>
+      </header>
+
+      <div class="notice" id="noticeBand">
+        <div class="notice-dot"></div>
+        <p class="notice-text">
+          SYS_STAT: ONLINE
+          <span>Encrypted connection established.</span>
+        </p>
+      </div>
+
+      <div class="divider" id="mainDivider"></div>
+
+      <main id="mainView">
+        <nav class="service-list" aria-label="Services">
+
+          <a class="service-row" href="https://payphone-nylon-absentee.ngrok-free.dev">
+            <span class="row-index">[01]</span>
+            <div class="row-body">
+              <span class="row-name">Downloader</span>
+              <span class="row-specs">Protocol DL-99 // Secure Fetch Engine</span>
+            </div>
+            <span class="row-enter">ENTER <span class="row-enter-arrow">_></span></span>
+          </a>
+
+          <a class="service-row" href="#player-link">
+            <span class="row-index">[02]</span>
+            <div class="row-body">
+              <span class="row-name">Player</span>
+              <span class="row-specs">Media Stream // Hi-Res Output </span>
+            </div>
+            <span class="row-enter">ENTER <span class="row-enter-arrow">_></span></span>
+          </a>
+
+        </nav>
+      </main>
+
+      <footer class="footer">
+        <nav class="footer-links" aria-label="Site links">
+          <button class="footer-link" type="button">ROOT</button>
+          <button class="footer-link" type="button">CONFIG</button>
+          <button class="footer-link" type="button">EXIT</button>
+        </nav>
+        <span class="footer-stamp">v3.0.1_CYBER</span>
+      </footer>
+
+    </div>
+
+    <script>
+      /* ── matrix rain (Updated to Purple/Hacker Style) ── */
+      (function initMatrix() {
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        // Switched characters to terminal hacking style chars + katakana
+        const chars = '01ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ<>{}[]!@#$%^&*()_+';
+        const fontSize = 16;
+        let cols, drops;
+
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          cols = Math.floor(canvas.width / fontSize);
+          drops = Array.from({ length: cols }, () => Math.random() * Math.ceil(canvas.height / fontSize));
+        }
+
+        let last = 0;
+        const fps = 24;
+        const interval = 1000 / fps;
+
+        function draw(now) {
+          requestAnimationFrame(draw);
+          if (now - last < interval) return;
+          last = now - ((now - last) % interval);
+          
+          ctx.fillStyle = 'rgba(9, 1, 15, 0.08)'; // Trails (Matches new bg)
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          ctx.fillStyle = '#d900ff'; // Neon Purple text
+          ctx.font = `${fontSize}px monospace`;
+          
+          for (let i = 0; i < drops.length; i++) {
+            const text = chars[Math.floor(Math.random() * chars.length)];
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+          }
+        }
+
+        resize();
+        requestAnimationFrame(draw);
+        window.addEventListener('resize', resize);
+      })();
+
+      /* ── title scramble (Updated for MPCD.KEPLER) ── */
+      const titleBtn = document.getElementById('titleBtn');
+      const TITLE_STR = 'MPCD.KEPLER';
+      const GLITCH = '!<>-_\/[]{}—=+*^?#@0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let scrambleTimer = null;
+
+      // Note: The dot is at index 4 in MPCD.KEPLER
+      function renderTitle(str) {
+        titleBtn.innerHTML = str.slice(0, 4) + '<em>' + str[4] + '</em>' + str.slice(5);
+      }
+
+      titleBtn.addEventListener('mouseenter', () => {
+        let revealed = 0, frame = 0;
+        clearInterval(scrambleTimer);
+        scrambleTimer = setInterval(() => {
+          let out = '';
+          for (let i = 0; i < TITLE_STR.length; i++) {
+            out += i < revealed
+              ? TITLE_STR[i]
+              : GLITCH[Math.floor(Math.random() * GLITCH.length)];
+          }
+          renderTitle(out);
+          if (++frame % 2 === 0) revealed++;
+          if (revealed >= TITLE_STR.length) {
+            renderTitle(TITLE_STR);
+            clearInterval(scrambleTimer);
+          }
+        }, 35);
+      });
+
+      titleBtn.addEventListener('mouseleave', () => {
+        clearInterval(scrambleTimer);
+        renderTitle(TITLE_STR);
+      });
+
+      titleBtn.addEventListener('click', (e) => {
+        location.reload();
+      });
+    </script>
+</body>
+</html>
